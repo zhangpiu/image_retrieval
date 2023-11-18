@@ -1,0 +1,6 @@
+.idea
+cmake-build-*
+*_pb2.py
+__pycache__
+saved_images
+rsync.sh

@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package image_retrieval.feature_extraction;
+
+message FeatureRecord {
+  optional string id = 1;
+  repeated float value = 2;
+  optional int32 label = 3 [default = -1];
+  optional bytes payload = 4;
+}
