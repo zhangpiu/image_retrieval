@@ -24,7 +24,8 @@ IsAlmostEqual(T x, T y, int ulp = 2) {
          || std::abs(x - y) < std::numeric_limits<T>::min();
 }
 
-float BaselineCosineDistance(const float* x, const float* y, int64_t length) {
+inline float BaselineCosineDistance(const float* x, const float* y,
+                                    int64_t length) {
   float dot = 0.f, norm_x = 0.f, norm_y = 0.f;
   for (int64_t i = 0; i < length; ++i) {
     dot += x[i] * y[i];
@@ -39,8 +40,8 @@ float BaselineCosineDistance(const float* x, const float* y, int64_t length) {
   return 1.f - dot / std::sqrt(norm_x * norm_y);
 }
 
-float BaselineEuclideanDistance(const float* x, const float* y,
-                                int64_t length) {
+inline float BaselineEuclideanDistance(const float* x, const float* y,
+                                       int64_t length) {
   float distance = 0.f;
   for (int64_t i = 0; i < length; ++i) {
     distance += (x[i] - y[i]) * (x[i] - y[i]);

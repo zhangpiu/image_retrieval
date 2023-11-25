@@ -8,7 +8,7 @@
 namespace image_retrieval {
 namespace ann {
 
-std::unique_ptr<IndexInterface> NewFlatIndex();
+std::unique_ptr<IndexInterface> NewFlatIndex(int dim_size);
 
 }  // namespace ann
 }  // namespace image_retrieval

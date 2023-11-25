@@ -15,8 +15,16 @@ target_link_libraries(flat_index
         ${Protobuf_LIBRARIES}
         )
 
+add_library(hnsw_index hnsw_index.cc ${PROTO_SRCS})
+target_link_libraries(hnsw_index
+        thread_pool
+        absl::str_format
+        absl::time
+        ${Protobuf_LIBRARIES}
+)
+
 add_executable(search_engine search_engine.cc)
-target_link_libraries(search_engine flat_index binary_index)
+target_link_libraries(search_engine flat_index binary_index hnsw_index)
 
 add_executable(vector_distance_test vector_distance_test.cc)
 target_link_libraries(vector_distance_test

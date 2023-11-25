@@ -36,80 +36,50 @@ class BinaryIndex : public IndexBase {
  public:
   using FeatureRecord = ::image_retrieval::feature_extraction::FeatureRecord;
 
-  BinaryIndex() : dim_size_(0), thread_pool_(10) {}
+  explicit BinaryIndex(int dim_size)
+      : IndexBase(dim_size), first_request_(true), thread_pool_(10) {
+    bit_threshold_.resize(dim_size_, 0.f);
+  }
 
-  bool BuildIndex(const std::string& filepath) override {
-    std::ifstream file(filepath);
-    if (!file.good()) {
-      throw std::runtime_error(absl::StrFormat(
-          "%s does not exist, please investigate and retry!", filepath));
+  bool Add(const FeatureRecord& record) override {
+    for (int i = 0; i < dim_size_; ++i) {
+      bit_threshold_[i] += record.value(i);
     }
-
-    int64_t start = absl::ToUnixMicros(absl::Now());
-    std::vector<char> buffer(BUFFER_SIZE);
-    while (true) {
-      if (!ReadRecord(file, buffer)) {
-        break;
-      }
-
-      FeatureRecord record;
-      record.ParseFromArray(buffer.data(), buffer.size());
-      if (dim_size_ == 0) {
-        dim_size_ = record.value_size();
-        bit_threshold_.resize(dim_size_, 0.f);
-      }
-      if (dim_size_ != record.value_size()) {
-        throw std::runtime_error(absl::StrFormat(
-            "Feature dim size should be equal, while got %d vs %ld", dim_size_,
-            record.value_size()));
-      }
-
-      for (int i = 0; i < dim_size_; ++i) {
-        bit_threshold_[i] += record.value(i);
-      }
-      index_data_[record.label()].emplace_back(std::move(record));
-
-      if (++total_count_ % 1000 == 0) {
-        std::cout << absl::StrFormat(
-                         "Read %d records, elapsed %.3f(s)", total_count_,
-                         (absl::ToUnixMicros(absl::Now()) - start) / 1e6)
-                  << std::endl;
-      }
-    }
-
-    if (total_count_) {
-      for (int i = 0; i < dim_size_; ++i) {
-        bit_threshold_[i] /= total_count_;
-      }
-    }
-
-    for (const auto& kv : index_data_) {
-      for (const auto& record : kv.second) {
-        auto bits =
-            Binarize(record.value().data(), bit_threshold_.data(), dim_size_);
-        index_[record.label()].emplace_back(bits);
-      }
-    }
-
-    std::cout << absl::StrFormat(
-                     "Totally read %d records, elapsed %.3f(s)", total_count_,
-                     (absl::ToUnixMicros(absl::Now()) - start) / 1e6)
-              << std::endl;
+    index_data_[record.label()].emplace_back(std::move(record));
+    ++total_count_;
 
     return true;
   }
 
   bool Search(const SearchRequest& request, SearchResponse& response) override {
-    if (index_.empty()) {
-      return true;
-    }
-
     const auto& query = request.query;
     if (query.size() != dim_size_) {
       throw std::runtime_error(
           absl::StrFormat("Query feature dim size should be equal to index "
                           "feature, while got %d vs %d",
                           query.size(), dim_size_));
+    }
+
+    if (first_request_) {
+      if (total_count_) {
+        for (int i = 0; i < dim_size_; ++i) {
+          bit_threshold_[i] /= total_count_;
+        }
+      }
+
+      for (const auto& kv : index_data_) {
+        for (const auto& record : kv.second) {
+          auto bits =
+              Binarize(record.value().data(), bit_threshold_.data(), dim_size_);
+          index_[record.label()].emplace_back(bits);
+        }
+      }
+
+      first_request_ = false;
+    }
+
+    if (index_.empty()) {
+      return true;
     }
 
     auto query_bits = Binarize(query.data(), bit_threshold_.data(), dim_size_);
@@ -186,13 +156,13 @@ class BinaryIndex : public IndexBase {
   }
 
  private:
+  std::atomic_bool first_request_;
+
   std::unordered_map<int, std::vector<std::bitset<BitLength>>> index_;
 
   std::unordered_map<int, std::vector<FeatureRecord>> index_data_;
 
   std::vector<float> bit_threshold_;
-
-  int64_t dim_size_;
 
   concurrency::ThreadPool thread_pool_;
 };
@@ -200,8 +170,8 @@ class BinaryIndex : public IndexBase {
 
 template class ::image_retrieval::ann::BinaryIndex<2048>;
 
-std::unique_ptr<IndexInterface> NewBinaryIndex2048() {
-  return std::make_unique<BinaryIndex<2048>>();
+std::unique_ptr<IndexInterface> NewBinaryIndex2048(int dim_size) {
+  return std::make_unique<BinaryIndex<2048>>(dim_size);
 }
 
 }  // namespace ann

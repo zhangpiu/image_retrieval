@@ -13,7 +13,7 @@
 namespace image_retrieval {
 namespace ann {
 
-std::unique_ptr<IndexInterface> NewBinaryIndex2048();
+std::unique_ptr<IndexInterface> NewBinaryIndex2048(int dim_size);
 
 }  // namespace ann
 }  // namespace image_retrieval

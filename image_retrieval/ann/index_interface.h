@@ -62,17 +62,22 @@ class IndexInterface {
  public:
   virtual ~IndexInterface() = default;
 
-  virtual bool BuildIndex(const std::string& filepath) = 0;
+  virtual bool Add(const feature_extraction::FeatureRecord& record) = 0;
 
   virtual bool Search(const SearchRequest& request,
                       SearchResponse& response) = 0;
+
+  virtual int GetDimSize() const = 0;
 };
 
 class IndexBase : public IndexInterface {
  public:
-  IndexBase() : total_count_(0) {}
+  IndexBase(int dim_size) : dim_size_(dim_size), total_count_(0) {}
+
+  int GetDimSize() const override { return dim_size_; }
 
  protected:
+  int dim_size_;
   int64_t total_count_;
 };
 
